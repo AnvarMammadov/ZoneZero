@@ -10,90 +10,96 @@
 </head>
 <body oncontextmenu="return false;">
 
-<canvas id="gameCanvas"></canvas>
-<div id="crosshair"></div>
-<div id="vignette" class="absolute inset-0 pointer-events-none z-10"></div>
-<div id="hurt-overlay" class="absolute inset-0 pointer-events-none opacity-0 transition-opacity duration-300 z-20" style="background: radial-gradient(circle, transparent 50%, rgba(185, 28, 28, 0.4) 100%);"></div>
+    <canvas id="gameCanvas"></canvas>
+    <div id="crosshair"></div>
+    <div id="vignette" class="absolute inset-0 pointer-events-none z-10"></div>
+    <div id="hurt-overlay" class="absolute inset-0 pointer-events-none opacity-0 transition-opacity duration-300 z-20" style="background: radial-gradient(circle, transparent 50%, rgba(185, 28, 28, 0.4) 100%);"></div>
 
-<div id="context-menu"></div>
+    <div id="context-menu"></div>
 
-<!-- HUD LAYER -->
-<div id="ui-layer" class="absolute inset-0 pointer-events-none z-30">
-    <div class="absolute top-6 left-6 hud-box rounded pointer-events-auto flex gap-4">
-        <div style="position: relative; width: 64px; height: 120px; flex-shrink: 0;">
-            <div id="hp-head" class="body-part part-head"></div>
-            <div id="hp-thorax" class="body-part part-thorax"></div>
-            <div id="hp-stomach" class="body-part part-stomach"></div>
-            <div id="hp-larm" class="body-part part-larm"></div>
-            <div id="hp-rarm" class="body-part part-rarm"></div>
-            <div id="hp-lleg" class="body-part part-lleg"></div>
-            <div id="hp-rleg" class="body-part part-rleg"></div>
-        </div>
-        <div class="flex flex-col justify-center gap-1 w-32">
-            <div class="text-xs text-gray-400 font-bold flex justify-between"><span>SAĞLAMLIQ</span> <span id="hp-total">440</span></div>
-            <div class="h-1 bg-zinc-800"><div id="bar-hp" class="h-full bg-emerald-600" style="width:100%"></div></div>
-            <div class="text-xs text-gray-400 font-bold flex justify-between mt-2"><span>ENERJİ</span></div>
-            <div class="h-1 bg-zinc-800"><div id="bar-stam" class="h-full bg-blue-500" style="width:100%"></div></div>
-            <div id="status-text" class="text-xs font-bold text-red-500 h-4 mt-1"></div>
-        </div>
-    </div>
-    
-    <div class="absolute bottom-6 right-6 hud-box rounded w-96">
-        <div class="flex justify-between items-end">
-            <div>
-                <div class="text-4xl font-['Oswald'] text-white" id="ammo-ui">--/--</div>
-                <div class="text-xs text-orange-500 font-bold" id="fire-mode">FULL AUTO</div>
+    <!-- HUD LAYER -->
+    <div id="ui-layer" class="absolute inset-0 pointer-events-none z-30">
+        <div class="absolute top-6 left-6 hud-box rounded pointer-events-auto flex gap-4">
+            <div style="position: relative; width: 64px; height: 120px; flex-shrink: 0;">
+                <div id="hp-head" class="body-part part-head"></div>
+                <div id="hp-thorax" class="body-part part-thorax"></div>
+                <div id="hp-stomach" class="body-part part-stomach"></div>
+                <div id="hp-larm" class="body-part part-larm"></div>
+                <div id="hp-rarm" class="body-part part-rarm"></div>
+                <div id="hp-lleg" class="body-part part-lleg"></div>
+                <div id="hp-rleg" class="body-part part-rleg"></div>
             </div>
-            <div class="text-right flex flex-col items-end">
-                <div id="weapon-svg" class="w-48 h-16 mb-2 opacity-90 flex justify-end"></div>
-                <div class="text-lg font-bold text-gray-300 font-['Oswald']" id="weapon-name">YUMRUQ</div>
+            <div class="flex flex-col justify-center gap-1 w-32">
+                <div class="text-xs text-gray-400 font-bold flex justify-between"><span>SAĞLAMLIQ</span> <span id="hp-total">440</span></div>
+                <div class="h-1 bg-zinc-800"><div id="bar-hp" class="h-full bg-emerald-600" style="width:100%"></div></div>
+                <div class="text-xs text-gray-400 font-bold flex justify-between mt-2"><span>ENERJİ</span></div>
+                <div class="h-1 bg-zinc-800"><div id="bar-stam" class="h-full bg-blue-500" style="width:100%"></div></div>
+                <div id="status-text" class="text-xs font-bold text-red-500 h-4 mt-1"></div>
             </div>
         </div>
-    </div>
 
-    <div id="prompt" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-16 hidden">
-        <div class="bg-black/90 text-white px-4 py-2 text-sm border-l-2 border-orange-500 shadow-xl">
-            <span class="font-bold text-orange-500">[F]</span> <span id="prompt-text">AXTAR</span>
-        </div>
-    </div>
-</div>
-
-<!-- INVENTORY SCREEN -->
-<div id="inventory-screen">
-    <div class="inv-container pointer-events-auto">
-        <div class="bg-zinc-950 p-3 border-b border-zinc-700 flex justify-between items-center">
-            <h1 class="font-['Oswald'] text-2xl text-orange-500 tracking-wide">GEAR</h1>
-            <div class="flex gap-4 text-sm text-gray-400">
-                <div class="text-gray-500 text-xs mr-4">SAĞ KLİK: MENYU AÇ | TAB: BAĞLA</div>
-                <button onclick="Game.toggleInventory()" class="text-white hover:text-red-500 font-bold">[X] BAĞLA</button>
-            </div>
-        </div>
-        <div class="inv-body">
-            <div class="gear-panel" id="gear-panel">
-                <div class="gear-silhouette"></div>
-                <div class="gear-slot slot-head" data-slot="head" id="slot-head">KASK</div>
-                <div class="gear-slot slot-armor" data-slot="armor" id="slot-armor">ZİREH</div>
-                <div class="gear-slot slot-primary" data-slot="primary" id="slot-primary">SİLAH</div>
-                <div class="gear-slot slot-backpack" data-slot="backpack" id="slot-backpack">ÇANTA</div>
-            </div>
-            <div class="grids-panel" id="grids-panel">
-                <div class="grid-section">
-                    <div class="grid-title">CİBLƏR</div>
-                    <div class="item-grid" id="grid-pockets" style="width: 200px; height: 50px;"></div>
+        <div class="absolute bottom-6 right-6 hud-box rounded w-96">
+            <div class="flex justify-between items-end">
+                <div>
+                    <div class="text-4xl font-['Oswald'] text-white" id="ammo-ui">--/--</div>
+                    <div class="text-xs text-orange-500 font-bold" id="fire-mode">FULL AUTO</div>
                 </div>
-                <div class="grid-section" id="section-backpack" style="display:none;">
-                    <div class="grid-title">ÇANTA (Berkut)</div>
-                    <div class="item-grid" id="grid-backpack" style="width: 200px; height: 200px;"></div>
-                </div>
-                <div class="grid-section border-l border-zinc-700 pl-4" id="section-loot" style="display:none;">
-                    <div class="grid-title text-orange-400">QƏNİMƏT</div>
-                    <div class="item-grid" id="grid-loot" style="width: 250px; height: 250px;"></div>
+                <div class="text-right flex flex-col items-end">
+                    <div id="weapon-svg" class="w-48 h-16 mb-2 opacity-90 flex justify-end"></div>
+                    <div class="text-lg font-bold text-gray-300 font-['Oswald']" id="weapon-name">YUMRUQ</div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-<script src="./src/main.js"></script>
+        <div id="prompt" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-16 hidden">
+            <div class="bg-black/90 text-white px-4 py-2 text-sm border-l-2 border-orange-500 shadow-xl">
+                <span class="font-bold text-orange-500">[F]</span> <span id="prompt-text">AXTAR</span>
+            </div>
+        </div>
+    </div>
+
+    <!--base button-->
+    <div id="base-bar" class="absolute top-4 right-4 z-40 text-sm text-white pointer-events-auto">
+        <button onclick="Game.startRaid()" class="px-4 py-2 bg-orange-500 hover:bg-orange-400 text-black font-bold">
+            ENTER RAID
+        </button>
+    </div>
+    <!-- INVENTORY SCREEN -->
+    <div id="inventory-screen">
+        <div class="inv-container pointer-events-auto">
+            <div class="bg-zinc-950 p-3 border-b border-zinc-700 flex justify-between items-center">
+                <h1 class="font-['Oswald'] text-2xl text-orange-500 tracking-wide">GEAR</h1>
+                <div class="flex gap-4 text-sm text-gray-400">
+                    <div class="text-gray-500 text-xs mr-4">SAĞ KLİK: MENYU AÇ | TAB: BAĞLA</div>
+                    <button onclick="Game.toggleInventory()" class="text-white hover:text-red-500 font-bold">[X] BAĞLA</button>
+                </div>
+            </div>
+            <div class="inv-body">
+                <div class="gear-panel" id="gear-panel">
+                    <div class="gear-silhouette"></div>
+                    <div class="gear-slot slot-head" data-slot="head" id="slot-head">KASK</div>
+                    <div class="gear-slot slot-armor" data-slot="armor" id="slot-armor">ZİREH</div>
+                    <div class="gear-slot slot-primary" data-slot="primary" id="slot-primary">SİLAH</div>
+                    <div class="gear-slot slot-backpack" data-slot="backpack" id="slot-backpack">ÇANTA</div>
+                </div>
+                <div class="grids-panel" id="grids-panel">
+                    <div class="grid-section">
+                        <div class="grid-title">CİBLƏR</div>
+                        <div class="item-grid" id="grid-pockets" style="width: 200px; height: 50px;"></div>
+                    </div>
+                    <div class="grid-section" id="section-backpack" style="display:none;">
+                        <div class="grid-title">ÇANTA (Berkut)</div>
+                        <div class="item-grid" id="grid-backpack" style="width: 200px; height: 200px;"></div>
+                    </div>
+                    <div class="grid-section border-l border-zinc-700 pl-4" id="section-loot" style="display:none;">
+                        <div class="grid-title text-orange-400">QƏNİMƏT</div>
+                        <div class="item-grid" id="grid-loot" style="width: 250px; height: 250px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./src/main.js"></script>
 </body>
 </html>

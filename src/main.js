@@ -163,7 +163,9 @@ class Character {
         if (!this.active) return;
         this.active = false;
         Game.map.loot.push(new LootContainer(this.x, this.y, 'body'));
-        if (this.isPlayer) alert("ÖLDÜNÜZ! (F5 Yenilə)");
+        if (this.isPlayer) {
+            Game.onPlayerDeath();
+        }
     }
 
     shoot() {
@@ -358,11 +360,18 @@ class Grid {
     }
 }
 
+// === GLOBAL STASH (BASE ANBARI) ===
+const Stash = new Grid('stash', 10, 6); // 10x6 böyük anbar
+
+
 const Game = {
     canvas: $('gameCanvas'), ctx: $('gameCanvas').getContext('2d'),
     cw: 0, ch: 0, tick: 0, cam: {x:0, y:0}, mouse: {x:0, y:0},
     player: null, map: { buildings: [], loot: [] }, bullets: [], enemies: [],
     inventoryOpen: false, activeLoot: null,
+
+    state: 'base', // 'base' və ya 'raid'
+    extractZone: { x: 1600, y: 300, radius: 90, timer: 0, need: 180 }, // 180 tick ~ 3 saniyə
 
     init() {
         this.resize(); window.addEventListener('resize', () => this.resize());
@@ -374,6 +383,7 @@ const Game = {
         for(let i=0; i<4; i++) this.enemies.push(new Character(Math.random()*1500+200, Math.random()*1500+200, false));
         this.updateHealthUI();
         this.updateWeaponUI();
+        this.enterBase(true);
         requestAnimationFrame(this.loop);
     },
     resize() { this.cw=this.canvas.width=window.innerWidth; this.ch=this.canvas.height=window.innerHeight; },
@@ -477,6 +487,7 @@ const Game = {
 
     update() {
         if (this.inventoryOpen) return;
+        if (this.state !== 'raid') return; 
         this.tick++;
         this.player.update();
         this.enemies.forEach(e => e.update());
@@ -501,7 +512,18 @@ const Game = {
         let barS = $('bar-stam'); if(barS) barS.style.width = this.player.stamina + '%';
         let closest = this.map.loot.find(l => dist(this.player, l) < 80);
         let prm = $('prompt');
-        if(prm) closest ? prm.classList.remove('hidden') : prm.classList.add('hidden');
+        if (prm) closest ? prm.classList.remove('hidden') : prm.classList.add('hidden');
+
+        const ex = this.extractZone;
+        const d = dist(this.player, { x: ex.x, y: ex.y });
+        if (d < ex.radius) {
+            ex.timer++;
+            if (ex.timer >= ex.need) {
+                this.onExtractSuccess();
+            }
+        } else {
+            ex.timer = 0;
+        }
     },
 
     draw() {
@@ -524,7 +546,108 @@ const Game = {
         this.bullets.forEach(b => b.draw(this.ctx, this.cam));
         this.map.buildings.forEach(b => b.draw(this.ctx, this.cam, 'roof'));
     },
-    loop() { Game.update(); Game.draw(); requestAnimationFrame(() => Game.loop()); }
+    loop() { Game.update(); Game.draw(); requestAnimationFrame(() => Game.loop()); },
+
+    enterBase(firstTime = false) {
+        this.state = 'base';
+        this.inventoryOpen = true;
+        this.activeLoot = { grid: Stash }; // sağ panel Stash olacaq
+
+        // Sağlamlığı resetlə
+        if (this.player) {
+            this.player.body = { ...this.player.maxBody };
+            this.player.bleeds = [];
+            this.player.stamina = 100;
+            this.player.active = true;
+            this.updateHealthUI();
+        }
+
+        // Inventarı göstər
+        $('inventory-screen').style.display = 'flex';
+        $('section-loot').style.display = 'flex';
+        const title = $('section-loot').querySelector('.grid-title');
+        if (title) title.innerText = 'STASH';
+
+        InvUI.render();
+    },
+
+    startRaid() {
+        this.state = 'raid';
+        this.inventoryOpen = false;
+        this.activeLoot = null;
+
+        // Inventarı gizlət
+        $('inventory-screen').style.display = 'none';
+
+        // Player start mövqeyi
+        this.player.x = 300;
+        this.player.y = 300;
+
+        // Yeni düşmən və loot yarad (sadə reset)
+        this.map.loot = [];
+        this.enemies = [];
+        for (let i = 0; i < 6; i++)
+            this.map.loot.push(new LootContainer(Math.random() * 1500 + 200, Math.random() * 1500 + 200));
+        for (let i = 0; i < 4; i++)
+            this.enemies.push(new Character(Math.random() * 1500 + 200, Math.random() * 1500 + 200, false));
+    },
+    onExtractSuccess() {
+        // Bütün itemləri stash-ə daşı
+        this.transferAllToStash();
+
+        // Sadə bildiriş (sonra HUD edərik)
+        alert('EXTRACT OLUNDUN! Loot bazaya göndərildi.');
+
+        // BASE-ə qaytar
+        this.enterBase(false);
+    },
+    moveItemToGrid(grid, item) {
+        for (let y = 0; y <= grid.h - item.h; y++) {
+            for (let x = 0; x <= grid.w - item.w; x++) {
+                if (grid.canPlace(x, y, item.w, item.h)) {
+                    item.x = x;
+                    item.y = y;
+                    grid.items.push(item);
+                    return true;
+                }
+            }
+        }
+        return false; // yer tapılmadı
+    },
+
+    transferAllToStash() {
+        const stash = Stash;
+        const p = this.player;
+
+        // Ciblər + çanta
+        ['pockets', 'backpack'].forEach(gName => {
+            const g = p.grids[gName];
+            if (!g) return;
+            g.items.forEach(item => this.moveItemToGrid(stash, item));
+            g.items = [];
+        });
+
+        // Gear slotları
+        ['head', 'armor', 'primary', 'backpack'].forEach(slot => {
+            const item = p.gear[slot];
+            if (item) {
+                this.moveItemToGrid(stash, item);
+                p.gear[slot] = null;
+            }
+        });
+
+        this.updateWeaponUI();
+    },
+    onPlayerDeath() {
+        // Raydda üstündə olan hər şeyi itirirsən (Tarkov kimi)
+        this.player.grids.pockets.items = [];
+        if (this.player.grids.backpack) this.player.grids.backpack.items = [];
+        this.player.gear = { head: null, armor: null, primary: null, backpack: null };
+
+        alert('ÖLDÜN. Gear getdi, amma STASH qalır. Yeni build hazırla.');
+
+        this.enterBase(false);
+    }
 };
 
 const InvUI = {
@@ -596,8 +719,19 @@ const InvUI = {
             InvUI.renderGrid('grid-backpack', Game.player.grids.backpack);
         } else $('section-backpack').style.display = 'none';
 
-        if (Game.activeLoot) { $('section-loot').style.display = 'flex'; InvUI.renderGrid('grid-loot', Game.activeLoot.grid); } 
-        else $('section-loot').style.display = 'none';
+        if (Game.state === 'base') {
+            $('section-loot').style.display = 'flex';
+            const title = $('section-loot').querySelector('.grid-title');
+            if (title) title.innerText = 'STASH';
+            InvUI.renderGrid('grid-loot', Stash);
+        } else if (Game.activeLoot) {
+            $('section-loot').style.display = 'flex';
+            const title = $('section-loot').querySelector('.grid-title');
+            if (title) title.innerText = 'QƏNİMƏT';
+            InvUI.renderGrid('grid-loot', Game.activeLoot.grid);
+        } else {
+            $('section-loot').style.display = 'none';
+        }
         
         Game.updateWeaponUI();
     },
